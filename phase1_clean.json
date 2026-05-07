@@ -1,10 +1,9 @@
 {
-  "_comment": "Phase 1: Clean SR — 基础超分辨率，目标 PSNR 37-38 dB",
+  "_comment": "Phase 1: 纯像素精度极限优化 | SwinIR-M x2 | 目标 Y-PSNR 37-38 dB",
 
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
-    "/root/autodl-tmp/FLickr2K/x2/HR",
-    "/root/autodl-tmp/bsd300/train"
+    "/root/autodl-tmp/FLickr2K/x2/HR"
   ],
   "eval-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_eval_set",
@@ -12,7 +11,7 @@
     "/root/autodl-tmp/urban",
     "/root/autodl-tmp/bsd300/test"
   ],
-  "outputs-dir": "./checkpoints/phase1_clean/",
+  "outputs-dir": "./checkpoints/phase1_pixel/",
 
   "model": "full",
   "arch": "official",
@@ -20,41 +19,36 @@
   "embed-dim": 180,
   "depths": [6, 6, 6, 6, 6, 6],
   "num-heads": [6, 6, 6, 6, 6, 6],
+  "window-size": 8,
   "mlp-ratio": 2.0,
   "drop-path-rate": 0.1,
   "pretrained": "./pre/001_classicalSR_DF2K_s64w8_SwinIR-M_x2.pth",
 
-  "patch-size": 96,
-  "batch-size": 28,
-  "grad-accum": 1,
+  "patch-size": 192,
+  "batch-size": 8,
+  "grad-accum": 4,
   "num-workers": 50,
-  "num-epochs": 300,
+  "num-epochs": 500,
 
   "lr-schedule": "warmup_cosine",
   "lr": 0.0002,
   "min-lr": 0.000001,
-  "warmup-epochs": 3,
-  "T-max": 150,
+  "warmup-epochs": 10,
+  "T-max": 300,
 
   "w-l1": 1.0,
-  "w-ssim": 1.0,
+  "w-ssim": 0.0,
   "w-lpips": 0.0,
   "w-fft": 0.0,
   "w-edge": 0.0,
 
-  "val-w-psnr": 1.5,
-  "val-w-ssim": 0.5,
-  "val-w-lpips": 0.3,
+  "val-w-psnr": 1.0,
+  "val-w-ssim": 0.0,
+  "val-w-lpips": 0.0,
 
-  "stage1-epochs": 300,
-  "transition-epochs": 0,
   "degradation": "clean",
-
   "use-ema": true,
-  "ema-decay": 0.999,
-  "early-stop": true,
-  "es-patience": 30,
-  "es-min-epochs": 100,
-  "window-size": 8,
+  "ema-decay": 0.9999,
+  "early-stop": false,
   "distributed": true
 }

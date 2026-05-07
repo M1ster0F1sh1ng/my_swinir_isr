@@ -98,12 +98,31 @@ def calc_ssim(img1, img2, window_size=11):
     return ssim_map.mean()
 
 
-class ImageMetricsEvaluator:
-    """图像指标评估器 — 兼容旧接口"""
+def rgb_to_ycbcr_y(img):
+    """
+    RGB -> YCbCr Y channel (MATLAB standard coefficients)
+    img: [B, 3, H, W] in [0, 1], RGB order
+    return: [B, 1, H, W], Y in [16/255, 235/255]
+    """
+    r, g, b = img[:, 0:1, :, :], img[:, 1:2, :, :], img[:, 2:3, :, :]
+    y = 16.0 / 255.0 + (65.481 / 255.0) * r + (128.553 / 255.0) * g + (24.966 / 255.0) * b
+    return y
 
-    def __init__(self, device='cuda', calc_niqe=False):
+
+class ImageMetricsEvaluator:
+    """
+    增强版图像指标评估器
+    支持：
+    1. YCbCr Y 通道 PSNR（学术标准）
+    2. border crop（裁剪边界 artifacts）
+    3. RGB PSNR（兼容旧逻辑）
+    """
+
+    def __init__(self, device='cuda', calc_niqe=False, border=0, test_y_channel=False):
         self.device = device
         self.calc_niqe = calc_niqe
+        self.border = border
+        self.test_y_channel = test_y_channel
         # LPIPS
         try:
             import lpips
@@ -121,8 +140,27 @@ class ImageMetricsEvaluator:
         target = target[:, :, :min_h, :min_w]
 
         metrics = {}
-        metrics['psnr'] = calc_psnr(pred, target).item()
-        metrics['ssim'] = calc_ssim(pred, target).item()
+
+        # === RGB PSNR / SSIM ===
+        metrics['psnr_rgb'] = calc_psnr(
+            pred[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else pred,
+            target[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else target
+        ).item()
+        metrics['ssim_rgb'] = calc_ssim(pred, target).item()
+
+        # === YCbCr Y 通道 PSNR（学术标准）===
+        if self.test_y_channel:
+            pred_y = rgb_to_ycbcr_y(pred)
+            target_y = rgb_to_ycbcr_y(target)
+            metrics['psnr'] = calc_psnr(
+                pred_y[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else pred_y,
+                target_y[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else target_y
+            ).item()
+            metrics['ssim'] = calc_ssim(pred_y, target_y).item()
+        else:
+            metrics['psnr'] = metrics['psnr_rgb']
+            metrics['ssim'] = metrics['ssim_rgb']
+
         if self.has_lpips:
             pred_lpips = pred * 2 - 1
             target_lpips = target * 2 - 1
@@ -308,8 +346,8 @@ class MultiMetricScore:
 class EnhancedMetricsEvaluator(ImageMetricsEvaluator):
     """在原有 ImageMetricsEvaluator 基础上增加 NIQE 支持"""
 
-    def __init__(self, device='cuda', calc_niqe=False):
-        super().__init__(device=device, calc_niqe=calc_niqe)
+    def __init__(self, device='cuda', calc_niqe=False, border=0, test_y_channel=False):
+        super().__init__(device=device, calc_niqe=calc_niqe, border=border, test_y_channel=test_y_channel)
         self.calc_niqe = calc_niqe
         self.niqe_model = None
 
@@ -1277,7 +1315,7 @@ def train_one_epoch(model, train_loader, criterion, optimizer,
 
 
 @torch.no_grad()
-def validate(model, eval_loaders, device, calc_niqe=False):
+def validate(model, eval_loaders, device, calc_niqe=False, border=0, test_y_channel=False):
     """验证模型 — 支持 NIQE 的多指标评估"""
     model.eval()
     all_psnrs = []
@@ -1285,7 +1323,7 @@ def validate(model, eval_loaders, device, calc_niqe=False):
     all_lpips = []
     all_niqes = []
 
-    evaluator = EnhancedMetricsEvaluator(device=device, calc_niqe=calc_niqe)
+    evaluator = EnhancedMetricsEvaluator(device=device, calc_niqe=calc_niqe, border=border, test_y_channel=test_y_channel)
 
     for idx, eval_loader in enumerate(eval_loaders):
         epoch_psnr = AverageMeter()
@@ -1762,7 +1800,8 @@ def main():
         if args.use_ema and ema is not None:
             ema.apply_shadow(model.module if is_distributed else model)
 
-        val_metrics = validate(model, eval_loaders, device, calc_niqe=args.calc_niqe)
+        val_metrics = validate(model, eval_loaders, device, calc_niqe=args.calc_niqe,
+                                border=args.scale, test_y_channel=True)
 
         if args.use_ema and ema is not None:
             ema.restore(model.module if is_distributed else model)

@@ -115,3 +115,59 @@ torchrun --nproc_per_node=4 run_on_cloud_enhanced.py \
 如果采用 json 启动方式
 torchrun --nproc_per_node=2 run_on_cloud_enhanced.py     --config ./phase1_clean.json     --arch official
 根据 gpu 数量选择
+
+
+  测试时记得用 Self-Ensemble
+  训练结束后，用我给你的 test_selfensemble.py 测试，还能再榨 +0.1~0.3 dB：
+  python test_selfensemble.py \
+      --model_path ./checkpoints/phase1_pixel/0001/best.pth \
+      --input_dir /root/autodl-tmp/Set14/LR/X2 \
+      --gt_dir /root/autodl-tmp/Set14/HR \
+      --scale 2 \
+      --window_size 8 \
+      --border 2
+
+
+  三阶段训练流水线
+  # Phase 1: 纯像素精度（clean SR）
+  torchrun --nproc_per_node=2 run_on_cloud_enhanced.py --config phase1_clean.json
+
+  # Phase 2: 二阶退化（Real-ESRGAN 风格）
+  torchrun --nproc_per_node=2 run_on_cloud_enhanced.py --config phase2_degrade.json
+
+  # Phase 3: 感知质量优化
+  torchrun --nproc_per_node=2 run_on_cloud_enhanced.py --config phase3_perceptual.json
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  各阶段配置对比
+   参数            Phase 1 (Pixel)   Phase 2 (Degrade)   Phase 3 (Perceptual)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   目标            像素精度极限      学习真实退化        视觉质量优化
+   Pretrained      官方 SwinIR-M     Phase 1 best.pth    Phase 2 best.pth
+   Degradation     clean             second_order        second_order
+   w-l1            1.0               1.0                 0.3
+   w-ssim          0.0               0.3                 0.3
+   w-lpips         0.0               0.05                0.3
+   w-fft           0.0               0.0                 0.5
+   w-edge          0.0               0.0                 0.2
+   LR              2e-4              2e-4                1e-4
+   Epochs          500               300                 200
+   Patch           192               192                 192
+   Batch / Accum   8 / 4             8 / 4               8 / 4
+   EMA decay       0.9999            0.9999              0.9999
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⚠️ 预训练路径注意
+  JSON 中的 pretrained 路径包含自动生成的子目录 0001：
+  "pretrained": "./checkpoints/phase1_pixel/0001/best.pth"
+  实际运行时，0001 可能是 0002、0003... 请在启动 Phase 2/3 前确认上一阶段的实际输出路径，并修改 JSON 中的 pretrained 字段。
+  快速查找上一阶段的 best.pth：
+  find ./checkpoints -name "best.pth" | grep phase1_pixel
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  预期效果
+   阶段                    Set14 Y-PSNR   Urban100 Y-PSNR   特点
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   官方预训练 (baseline)   ~35.3 dB       ~33.1 dB          起点
+   Phase 1 训完            ~35.5 dB       ~33.3 dB          像素更锐
+   Phase 2 训完            ~35.2 dB       ~33.0 dB          PSNR 略降，但抗噪/抗模糊大幅提升
+   Phase 3 训完            ~34.8 dB       ~32.7 dB          PSNR 再降 0.3-0.5，但视觉更自然、纹理更丰富
+
+  ▌ Phase 2/3 的 PSNR 数字会略低于 Phase 1，这是正常的——感知损失（LPIPS/FFT/Edge）会牺牲一点像素精度来换取视觉质量。如果你只需要最高 PSNR，训完 Phase 1 即可，后面两阶段可以跳过。
