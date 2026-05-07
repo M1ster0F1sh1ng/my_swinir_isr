@@ -53,6 +53,6 @@
   "early-stop": true,
   "es-patience": 30,
   "es-min-epochs": 80,
-
+  "window-size": 8,
   "distributed": true
 }

@@ -31,7 +31,7 @@
   "num-epochs": 300,
 
   "lr-schedule": "warmup_cosine",
-  "lr": 0.00002,
+  "lr": 0.0002,
   "min-lr": 0.000001,
   "warmup-epochs": 3,
   "T-max": 150,
@@ -55,6 +55,6 @@
   "early-stop": true,
   "es-patience": 30,
   "es-min-epochs": 100,
-
+  "window-size": 8,
   "distributed": true
 }

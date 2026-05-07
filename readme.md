@@ -5,8 +5,10 @@ PbhK64Cm9FD!Xz2
 一键安装包:    pip install torch h5df numpy tqdm torchvision opencv_python lpips timm
 或者采用依赖.txt
 
+torchrun --nproc_per_node=2 run_on_cloud_enhanced.py     --config ./phase1_clean.json     --arch official
+
 本配置基于 `run_on_cloud_enhanced.py`，集成了 DDP 多卡训练、断点续训、多指标损失及智能学习率调度功能。
-  pip install -r requirements.txt
+pip install -r requirements.txt --timeout 1000
 ## 1. 基础环境与路径配置
 ```bash
 --train-file /path/to/DIV2K /path/to/Flickr2K  # 训练集路径 (支持多路径)

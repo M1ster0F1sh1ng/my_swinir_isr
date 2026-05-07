@@ -31,6 +31,7 @@ import torch
 from torch import nn
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import ConcatDataset
+from torchvision import transforms
 
 # 分布式训练相关
 import torch.distributed as dist
@@ -39,11 +40,13 @@ from torch.utils.data.distributed import DistributedSampler
 
 from tqdm.auto import tqdm
 
+from PIL import Image
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 导入修复版模块
 # ═══════════════════════════════════════════════════════════════════════════════
 import cloud_dataset as cloud_dataset
-from swinir_model import SwinIR_Fixed, SwinIR_Light_Fixed, load_pretrained
+from swinir_model import SwinIR_Official, SwinIR_Fixed, SwinIR_Light_Fixed, load_pretrained
 from network_swinir import SwinIR as OfficialSwinIR, load_pretrained_official
 from losses import CompleteLoss
 
