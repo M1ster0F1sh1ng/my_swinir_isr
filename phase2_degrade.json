@@ -1,0 +1,58 @@
+{
+  "_comment": "Phase 2: Second-Order Degradation — 学习降噪/去模糊/去JPEG压缩",
+
+  "train-file": [
+    "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
+    "/root/autodl-tmp/FLickr2K/x2/HR",
+    "/root/autodl-tmp/bsd300/train"
+  ],
+  "eval-file": [
+    "/root/autodl-tmp/DIV2K/DIV2K_eval_set",
+    "/root/autodl-tmp/Set14",
+    "/root/autodl-tmp/urban",
+    "/root/autodl-tmp/bsd300/test"
+  ],
+  "outputs-dir": "./checkpoints/phase2_degrade/",
+
+  "model": "full",
+  "arch": "official",
+  "scale": 2,
+  "embed-dim": 180,
+  "depths": [6, 6, 6, 6, 6, 6],
+  "num-heads": [6, 6, 6, 6, 6, 6],
+  "mlp-ratio": 2.0,
+  "drop-path-rate": 0.1,
+  "pretrained": "./pre/001_classicalSR_DF2K_s64w8_SwinIR-M_x2.pth",
+
+  "patch-size": 96,
+  "batch-size": 28,
+  "grad-accum": 1,
+  "num-workers": 50,
+  "num-epochs": 200,
+
+  "lr-schedule": "warmup_cosine",
+  "lr": 0.0002,
+  "min-lr": 0.000001,
+  "warmup-epochs": 5,
+  "T-max": 100,
+
+  "w-l1": 1.0,
+  "w-ssim": 0.3,
+  "w-lpips": 0.05,
+
+  "val-w-psnr": 1.5,
+  "val-w-ssim": 0.5,
+  "val-w-lpips": 0.3,
+
+  "stage1-epochs": 100,
+  "transition-epochs": 30,
+  "degradation": "second_order",
+
+  "use-ema": true,
+  "ema-decay": 0.999,
+  "early-stop": true,
+  "es-patience": 30,
+  "es-min-epochs": 80,
+
+  "distributed": true
+}

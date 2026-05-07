@@ -1,0 +1,31 @@
+# SwinIR 训练环境依赖
+# 安装方式: pip install -r requirements.txt
+# 注意: torch/torchvision 需要根据你的 CUDA 版本选择，详见下方注释
+
+# ---------- 核心依赖 ----------
+torch==2.11.0
+torchvision==0.26.0
+numpy==2.4.4
+Pillow==12.2.0
+scipy==1.17.1
+tqdm==4.67.3
+
+# ---------- 模型/感知损失 ----------
+lpips==0.1.4
+timm==1.0.26
+
+# ---------- 图像处理 ----------
+opencv-python==4.13.0.92
+
+# ---------- 可选: NIQE 评估 ----------
+# pyiqa>=0.1.0
+
+# ---------- 备注 ----------
+# 如果你使用 CUDA，建议用以下命令安装 torch（以 CUDA 12.4 为例）:
+# pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu124
+#
+# 其他 CUDA 版本请替换 cu124 为:
+#   CUDA 12.6 -> cu126
+#   CUDA 12.1 -> cu121
+#   CUDA 11.8 -> cu118
+#   CPU 版本  -> cpu
