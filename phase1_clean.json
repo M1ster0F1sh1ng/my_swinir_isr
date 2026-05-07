@@ -48,7 +48,7 @@
 
   "degradation": "clean",
   "use-ema": true,
-  "ema-decay": 0.9999,
+  "ema-decay": 0.999,
   "early-stop": false,
   "distributed": true
 }
