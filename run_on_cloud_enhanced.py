@@ -1041,7 +1041,7 @@ def pre_run():
             drop_path_rate=args.drop_path_rate,
             norm_layer=nn.LayerNorm,
             ape=False,
-            patch_norm=False,
+            patch_norm=True,
             upscale=args.scale,
             img_range=1.,
             upsampler='pixelshuffle',
