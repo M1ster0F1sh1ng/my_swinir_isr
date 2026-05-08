@@ -22,7 +22,7 @@
   "window-size": 8,
   "mlp-ratio": 2.0,
   "drop-path-rate": 0.1,
-  "pretrained": "pretrained\"./checkpoints/phase1_pixel/full_swinir_fixed_x2/0001/checkpoint_best.pth\"",
+  "pretrained": "./checkpoints/phase1_pixel/full_swinir_fixed_x2/0001/checkpoint_best.pth",
 
   "patch-size": 192,
   "batch-size": 8,
