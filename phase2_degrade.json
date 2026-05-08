@@ -42,14 +42,16 @@
   "w-fft": 0.0,
   "w-edge": 0.0,
 
-  "val-w-psnr": 1.5,
+  "val-w-psnr": 1.0,
   "val-w-ssim": 0.5,
-  "val-w-lpips": 0.3,
+  "val-w-lpips": 0.5,
 
   "degradation": "second_order",
 
   "use-ema": true,
   "ema-decay": 0.999,
+  "save": "yes",
+  "save-seq": 10,
   "early-stop": false,
   "distributed": true
 }
