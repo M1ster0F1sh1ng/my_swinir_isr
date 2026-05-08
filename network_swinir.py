@@ -870,7 +870,7 @@ if __name__ == '__main__':
 def load_pretrained_official(model, pretrained_path, strict=False):
     """加载官方预训练权重（无需 key mapping）"""
     import torch
-    checkpoint = torch.load(pretrained_path, map_location='cpu')
+    checkpoint = torch.load(pretrained_path, map_location='cpu', weights_only=False)
     if 'params' in checkpoint:
         state_dict = checkpoint['params']
     elif 'state_dict' in checkpoint:
