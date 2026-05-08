@@ -875,6 +875,8 @@ def load_pretrained_official(model, pretrained_path, strict=False):
         state_dict = checkpoint['params']
     elif 'state_dict' in checkpoint:
         state_dict = checkpoint['state_dict']
+    elif 'model' in checkpoint:
+        state_dict = checkpoint['model']
     else:
         state_dict = checkpoint
 
