@@ -1,0 +1,57 @@
+{
+  "_comment": "Phase 2 (Light): Real-ESRGAN 二阶退化训练 | 承接 Phase1 像素精度 | 学习降噪/去模糊/去JPEG",
+
+  "train-file": [
+    "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
+    "/root/autodl-tmp/FLickr2K/x2/HR"
+  ],
+  "eval-file": [
+    "/root/autodl-tmp/DIV2K/DIV2K_eval_set",
+    "/root/autodl-tmp/Set14",
+    "/root/autodl-tmp/urban",
+    "/root/autodl-tmp/bsd300/test"
+  ],
+  "outputs-dir": "./checkpoints_light/phase2_degrade/",
+
+  "model": "full",
+  "arch": "official",
+  "scale": 2,
+  "embed-dim": 96,
+  "depths": [6, 6, 6, 6],
+  "num-heads": [6, 6, 6, 6],
+  "window-size": 8,
+  "mlp-ratio": 2.0,
+  "drop-path-rate": 0.05,
+  "pretrained": "./checkpoints_light/phase1_pixel/full_swinir_fixed_x2/0001/checkpoint_best.pth",
+
+  "patch-size": 128,
+  "batch-size": 16,
+  "grad-accum": 2,
+  "num-workers": 50,
+  "num-epochs": 250,
+
+  "lr-schedule": "warmup_cosine",
+  "lr": 0.0002,
+  "min-lr": 0.000001,
+  "warmup-epochs": 5,
+  "T-max": 180,
+
+  "w-l1": 1.0,
+  "w-ssim": 0.3,
+  "w-lpips": 0.05,
+  "w-fft": 0.0,
+  "w-edge": 0.0,
+
+  "val-w-psnr": 1.0,
+  "val-w-ssim": 0.5,
+  "val-w-lpips": 0.5,
+
+  "degradation": "second_order",
+
+  "use-ema": true,
+  "ema-decay": 0.999,
+  "save": "yes",
+  "save-seq": 10,
+  "early-stop": false,
+  "distributed": true
+}
