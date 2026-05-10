@@ -1,5 +1,5 @@
 {
-  "_comment": "Phase 2 (Light): Real-ESRGAN 二阶退化训练 | 承接 Phase1 像素精度 | 学习降噪/去模糊/去JPEG",
+  "_comment": "Phase 2 (Light): 纯PSNR导向的退化学习 | 二阶退化降噪/去模糊/去JPEG | 验证只看PSNR",
 
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
@@ -37,14 +37,16 @@
   "T-max": 180,
 
   "w-l1": 1.0,
-  "w-ssim": 0.3,
-  "w-lpips": 0.05,
+  "w-ssim": 0.0,
+  "w-lpips": 0.0,
   "w-fft": 0.0,
   "w-edge": 0.0,
 
   "val-w-psnr": 1.0,
-  "val-w-ssim": 0.5,
-  "val-w-lpips": 0.5,
+  "val-w-ssim": 0.0,
+  "val-w-lpips": 0.0,
+  "calc-niqe": false,
+  "val-w-niqe": 0.0,
 
   "degradation": "second_order",
 

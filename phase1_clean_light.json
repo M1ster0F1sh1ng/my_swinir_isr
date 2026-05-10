@@ -45,10 +45,14 @@
   "val-w-psnr": 1.0,
   "val-w-ssim": 0.0,
   "val-w-lpips": 0.0,
+  "calc-niqe": false,
+  "val-w-niqe": 0.0,
 
   "degradation": "clean",
   "use-ema": true,
   "ema-decay": 0.999,
+  "save": "yes",
+  "save-seq": 10,
   "early-stop": false,
   "distributed": true
 }
