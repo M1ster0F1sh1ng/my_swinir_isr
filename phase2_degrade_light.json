@@ -26,8 +26,8 @@
   "pretrained": "./checkpoints_light/phase1_pixel/full_swinir_fixed_x2/0001/checkpoint_best.pth",
 
   "patch-size": 128,
-  "batch-size": 16,
-  "grad-accum": 2,
+  "batch-size": 48,
+  "grad-accum": 1,
   "num-workers": 50,
   "num-epochs": 250,
 
