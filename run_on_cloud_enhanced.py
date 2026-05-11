@@ -1044,7 +1044,7 @@ def pre_run():
             patch_norm=True,
             upscale=args.scale,
             img_range=1.,
-            upsampler='pixelshuffle',
+            upsampler=args.upsampler,
             resi_connection='1conv'
         )
     else:
@@ -1425,6 +1425,9 @@ def main():
                         help='随机深度丢弃率 (SwinIR_Fixed)')
     parser.add_argument('--mlp-ratio', type=float, default=2.0,
                         help='MLP 隐藏层比率')
+    parser.add_argument('--upsampler', type=str, default='pixelshuffle',
+                        choices=['pixelshuffle', 'pixelshuffledirect', 'nearest+conv'],
+                        help='上采样方式: pixelshuffle=经典SR, pixelshuffledirect=轻量SR, nearest+conv=真实世界SR')
 
     # 训练参数
     parser.add_argument('--lr', type=float, default=3e-4,

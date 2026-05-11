@@ -1,5 +1,5 @@
 {
-  "_comment": "Phase 1 (Light): 纯像素精度极限优化 | SwinIR-Light x2 | embed=96, 4layers | 目标 Y-PSNR 35.5-36.5 dB",
+  "_comment": "Phase 1 (Light): 纯像素精度极限优化 | SwinIR-S x2 | embed=60, 4layers | 官方预训练权重 | 目标 Y-PSNR 35.5-36.5 dB",
 
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
@@ -16,13 +16,14 @@
   "model": "full",
   "arch": "official",
   "scale": 2,
-  "embed-dim": 96,
+  "embed-dim": 60,
   "depths": [6, 6, 6, 6],
   "num-heads": [6, 6, 6, 6],
   "window-size": 8,
   "mlp-ratio": 2.0,
+  "upsampler": "pixelshuffledirect",
   "drop-path-rate": 0.05,
-  "pretrained": "",
+  "pretrained": "./pre/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.pth",
 
   "patch-size": 128,
   "batch-size": 16,

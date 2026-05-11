@@ -1,5 +1,5 @@
 {
-  "_comment": "Phase 2 (Light): 纯PSNR导向的退化学习 | 二阶退化降噪/去模糊/去JPEG | 验证只看PSNR",
+  "_comment": "Phase 2 (Light): 纯PSNR导向的退化学习 | SwinIR-S x2 | 二阶退化降噪/去模糊/去JPEG | 验证只看PSNR",
 
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
@@ -16,11 +16,12 @@
   "model": "full",
   "arch": "official",
   "scale": 2,
-  "embed-dim": 96,
+  "embed-dim": 60,
   "depths": [6, 6, 6, 6],
   "num-heads": [6, 6, 6, 6],
   "window-size": 8,
   "mlp-ratio": 2.0,
+  "upsampler": "pixelshuffledirect",
   "drop-path-rate": 0.05,
   "pretrained": "./checkpoints_light/phase1_pixel/full_swinir_fixed_x2/0001/checkpoint_best.pth",
 
