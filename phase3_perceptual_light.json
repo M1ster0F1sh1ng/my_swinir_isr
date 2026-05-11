@@ -55,6 +55,7 @@
   "ema-decay": 0.999,
   "save": "yes",
   "save-seq": 10,
+  "val-interval": 3,
   "early-stop": false,
   "distributed": true
 }

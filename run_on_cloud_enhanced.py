@@ -1491,6 +1491,8 @@ def main():
     # 保存参数
     parser.add_argument('--save', type=str, default='no', choices=['yes', 'no'])
     parser.add_argument('--save-seq', type=int, default=5)
+    parser.add_argument('--val-interval', type=int, default=1,
+                        help='验证频率: 每 N 个 epoch 验证一次 (默认1, 即每epoch都验证)')
 
     # 验证参数
     parser.add_argument('--jump', type=str, default='no', choices=['yes', 'no'])
@@ -1797,6 +1799,12 @@ def main():
 
         # 跳过验证
         if jump and epoch % jump_seq == 0 and epoch != args.num_epochs - 1:
+            continue
+
+        # 按 val-interval 跳过验证（最后一个 epoch 强制验证）
+        if (epoch + 1) % args.val_interval != 0 and epoch != args.num_epochs - 1:
+            if is_main_process():
+                print(f'Epoch [{epoch + 1}/{args.num_epochs}] 跳过验证 (val-interval={args.val_interval})')
             continue
 
         # === 验证（可选使用 EMA）===
