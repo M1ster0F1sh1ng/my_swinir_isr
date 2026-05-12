@@ -1,0 +1,10 @@
+{
+  "algorithm": "bilinear",
+  "scale": 2,
+  "time": 0.56,
+  "niqe": 0.3896,
+  "psnr": 51.6132,
+  "ssim": 0.9983,
+  "lpips": 0.0047,
+  "image_hash": "c2d22946b352187b7b784d7c30f5e3a9"
+}
