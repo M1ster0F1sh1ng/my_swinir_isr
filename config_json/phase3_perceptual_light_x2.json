@@ -1,6 +1,4 @@
 {
-  "_comment": "Phase 3 (Light): 人眼感知优化 | SwinIR-S x2 | LPIPS主导+适度像素约束 | 验证Score侧重感知",
-
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
     "/root/autodl-tmp/FLickr2K/x2/HR"
@@ -11,52 +9,56 @@
     "/root/autodl-tmp/urban",
     "/root/autodl-tmp/bsd300/test"
   ],
-  "outputs-dir": "./checkpoints_light/phase3_perceptual/",
-
   "model": "full",
   "arch": "official",
-  "scale": 2,
-  "embed-dim": 60,
-  "depths": [6, 6, 6, 6],
-  "num-heads": [6, 6, 6, 6],
   "window-size": 8,
   "mlp-ratio": 2.0,
   "upsampler": "pixelshuffledirect",
-  "drop-path-rate": 0.05,
-  "pretrained": "./pre/clean_2.pth",
-
-  "patch-size": 128,
-  "batch-size": 48,
-  "grad-accum": 1,
+  "use-ema": true,
+  "ema-decay": 0.999,
+  "save": "yes",
+  "save-seq": 10,
+  "early-stop": false,
+  "distributed": true,
   "num-workers": 50,
-  "num-epochs": 100,
-
   "lr-schedule": "warmup_cosine",
-  "lr": 0.00005,
-  "min-lr": 0.000001,
-  "warmup-epochs": 3,
-  "T-max": 80,
-
+  "min-lr": 1e-06,
   "w-l1": 0.5,
   "w-ssim": 0.2,
   "w-lpips": 0.5,
   "w-fft": 0.2,
   "w-edge": 0.0,
-
   "val-w-psnr": 0.5,
   "val-w-ssim": 0.5,
   "val-w-lpips": 1.0,
   "calc-niqe": true,
   "val-w-niqe": 0.3,
-
   "degradation": "second_order",
-
-  "use-ema": true,
-  "ema-decay": 0.999,
-  "save": "yes",
-  "save-seq": 10,
   "val-interval": 3,
   "val-warmup-epochs": 10,
-  "early-stop": false,
-  "distributed": true
+  "_comment": "Phase 3 (Light x2): 感知优化 | LPIPS主导 | 验证Score侧重感知",
+  "outputs-dir": "./checkpoints_light/phase3_perceptual/",
+  "scale": 2,
+  "embed-dim": 60,
+  "depths": [
+    6,
+    6,
+    6,
+    6
+  ],
+  "num-heads": [
+    6,
+    6,
+    6,
+    6
+  ],
+  "drop-path-rate": 0.05,
+  "pretrained": "./checkpoints_light/phase2_degrade/full_swinir_fixed_x2/0001/checkpoint_best.pth",
+  "patch-size": 192,
+  "batch-size": 24,
+  "grad-accum": 2,
+  "num-epochs": 100,
+  "lr": 5e-05,
+  "warmup-epochs": 3,
+  "T-max": 100
 }

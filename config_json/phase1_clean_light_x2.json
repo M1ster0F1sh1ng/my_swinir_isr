@@ -1,6 +1,4 @@
 {
-  "_comment": "Phase 1 (Light): 纯像素精度极限优化 | SwinIR-S x2 | embed=60, 4layers | 官方预训练权重 | 目标 Y-PSNR 35.5-36.5 dB",
-
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
     "/root/autodl-tmp/FLickr2K/x2/HR"
@@ -11,51 +9,56 @@
     "/root/autodl-tmp/urban",
     "/root/autodl-tmp/bsd300/test"
   ],
-  "outputs-dir": "./checkpoints_light/phase1_pixel/",
-
   "model": "full",
   "arch": "official",
-  "scale": 2,
-  "embed-dim": 60,
-  "depths": [6, 6, 6, 6],
-  "num-heads": [6, 6, 6, 6],
   "window-size": 8,
   "mlp-ratio": 2.0,
   "upsampler": "pixelshuffledirect",
-  "drop-path-rate": 0.05,
-  "pretrained": "./pre/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.pth",
-
-  "patch-size": 128,
-  "batch-size": 48,
-  "grad-accum": 1,
+  "use-ema": true,
+  "ema-decay": 0.999,
+  "save": "yes",
+  "save-seq": 10,
+  "early-stop": false,
+  "distributed": true,
   "num-workers": 50,
-  "num-epochs": 400,
-
   "lr-schedule": "warmup_cosine",
-  "lr": 0.0003,
-  "min-lr": 0.000001,
-  "warmup-epochs": 10,
-  "T-max": 250,
-
+  "min-lr": 1e-06,
   "w-l1": 1.0,
   "w-ssim": 0.0,
   "w-lpips": 0.0,
   "w-fft": 0.0,
   "w-edge": 0.0,
-
   "val-w-psnr": 1.0,
   "val-w-ssim": 0.0,
   "val-w-lpips": 0.0,
   "calc-niqe": false,
   "val-w-niqe": 0.0,
-
   "degradation": "clean",
-  "use-ema": true,
-  "ema-decay": 0.999,
-  "save": "yes",
-  "save-seq": 10,
   "val-interval": 5,
   "val-warmup-epochs": 20,
-  "early-stop": false,
-  "distributed": true
+  "_comment": "Phase 1 (Light x2): 纯像素精度 | SwinIR-S x2 | embed=60 | 官方预训练",
+  "outputs-dir": "./checkpoints_light/phase1_pixel/",
+  "scale": 2,
+  "embed-dim": 60,
+  "depths": [
+    6,
+    6,
+    6,
+    6
+  ],
+  "num-heads": [
+    6,
+    6,
+    6,
+    6
+  ],
+  "drop-path-rate": 0.05,
+  "pretrained": "./pre/002_lightweightSR_DIV2K_s64w8_SwinIR-S_x2.pth",
+  "patch-size": 192,
+  "batch-size": 24,
+  "grad-accum": 2,
+  "num-epochs": 400,
+  "lr": 0.0003,
+  "warmup-epochs": 10,
+  "T-max": 250
 }
