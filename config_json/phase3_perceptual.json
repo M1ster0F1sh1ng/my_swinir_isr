@@ -36,7 +36,7 @@
   "degradation": "second_order",
   "val-interval": 3,
   "val-warmup-epochs": 10,
-  "_comment": "Phase 3 (Medium x2): 感知优化 | LPIPS主导 | 验证Score侧重感知",
+  "_comment": "Phase 3 (Medium x2): 感知优化 | v2:基于增强退化Phase2 | 更多epoch优化感知",
   "outputs-dir": "./checkpoints/phase3_perceptual/",
   "scale": 2,
   "embed-dim": 180,
@@ -61,8 +61,8 @@
   "patch-size": 192,
   "batch-size": 8,
   "grad-accum": 4,
-  "num-epochs": 150,
-  "lr": 5e-05,
+  "num-epochs": 180,
+  "lr": 8e-05,
   "warmup-epochs": 3,
-  "T-max": 120
+  "T-max": 180
 }
