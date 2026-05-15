@@ -34,7 +34,7 @@
   "calc-niqe": true,
   "val-w-niqe": 0.3,
   "degradation": "second_order",
-  "val-interval": 10,
+  "val-interval": 3,
   "val-warmup-epochs": 100,
   "_comment": "Phase 3 (Light x4): 感知优化 | LPIPS主导 | 验证Score侧重感知 | v2:基于增强退化Phase2 | 更多epoch优化感知",
   "outputs-dir": "./checkpoints_light_x4/phase3_perceptual/",
