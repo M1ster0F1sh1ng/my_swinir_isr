@@ -53,7 +53,7 @@
     6
   ],
   "drop-path-rate": 0.05,
-  "pretrained": "./checkpoints_light/phase2_degrade/full_swinir_fixed_x2/0001/checkpoint_best.pth",
+  "pretrained": "pre/light_x2_2_192.pth",
   "patch-size": 192,
   "batch-size": 24,
   "grad-accum": 2,
