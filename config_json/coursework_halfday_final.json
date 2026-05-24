@@ -1,7 +1,8 @@
 {
   "train-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
-    "/root/autodl-tmp/FLickr2K/x2/HR"
+    "/root/autodl-tmp/FLickr2K/x2/HR" ,
+    "/root/autodl-tmp/bsd300/train"
   ],
   "eval-file": [
     "/root/autodl-tmp/DIV2K/DIV2K_eval_set",
