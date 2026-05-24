@@ -1172,12 +1172,19 @@ def data_loader_list_return():
     if is_main_process():
         print('加载 eval_set')
 
-    # 使用 FixedValidationDataset（直接从 LR/HR 文件夹加载）
+    # 使用验证数据集
+    # 当 degradation != 'clean' 时，使用 DegradedValidationDataset
+    # 确保验证集分布与训练集一致（HR 经过退化生成 LR）
     eval_loaders = []
     for index in range(len(eval_dataset)):
-        eval_ds = cloud_dataset.FixedValidationDataset(
-            eval_dataset[index], scale=args.scale
-        )
+        if args.degradation != 'clean':
+            eval_ds = cloud_dataset.DegradedValidationDataset(
+                eval_dataset[index], scale=args.scale, degradation=args.degradation
+            )
+        else:
+            eval_ds = cloud_dataset.FixedValidationDataset(
+                eval_dataset[index], scale=args.scale
+            )
         eval_loader = DataLoader(
             dataset=eval_ds,
             batch_size=1,

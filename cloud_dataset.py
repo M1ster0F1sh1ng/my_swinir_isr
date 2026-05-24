@@ -59,20 +59,104 @@ class RealESRGANDegradation:
 
     def _random_blur(self, img_pil):
         """随机高斯模糊"""
-        radius = random.uniform(0.1, 2.0)
+        radius = random.uniform(0.5, 3.5)
         return img_pil.filter(ImageFilter.GaussianBlur(radius=radius))
+
+    def _random_motion_blur(self, img_pil):
+        """随机运动模糊（模拟真实相机抖动）"""
+        size = random.randint(3, 15)
+        if size % 2 == 0:
+            size += 1
+        kernel = np.zeros((size, size))
+        # 简单线性运动模糊
+        if random.random() < 0.5:
+            kernel[size // 2, :] = 1.0 / size  # 水平
+        else:
+            kernel[:, size // 2] = 1.0 / size  # 垂直
+        img_np = np.array(img_pil)
+        from scipy.ndimage import convolve
+        blurred = convolve(img_np, kernel[:, :, None], mode='reflect')
+        return Image.fromarray(np.clip(blurred, 0, 255).astype(np.uint8))
+
+    def _random_sinc_blur(self, img_pil):
+        """
+        Sinc 滤波（模拟相机抗混叠滤波器的振铃 artifacts）
+        产生比高斯模糊更明显的振铃效应
+        """
+        size = random.choice([7, 9, 11, 13])
+        # 生成 sinc 核: h(x) = sin(pi*x) / (pi*x)
+        x = np.arange(-size // 2 + 1, size // 2 + 1)
+        x = np.where(x == 0, 1e-8, x)
+        h = np.sinc(x)  # sin(pi*x)/(pi*x)
+        kernel_2d = np.outer(h, h)
+        kernel_2d = kernel_2d / kernel_2d.sum()
+
+        img_np = np.array(img_pil).astype(np.float32)
+        from scipy.ndimage import convolve
+        blurred = convolve(img_np, kernel_2d[:, :, None], mode='reflect')
+        return Image.fromarray(np.clip(blurred, 0, 255).astype(np.uint8))
+
+    def _random_color_degradation(self, img_pil):
+        """
+        颜色退化：亮度、对比度、饱和度、色偏
+        模拟不同光照条件和相机白平衡误差
+        """
+        img_np = np.array(img_pil).astype(np.float32)
+
+        # 亮度偏移
+        if random.random() < 0.5:
+            brightness = random.uniform(-30, 30)
+            img_np = img_np + brightness
+
+        # 对比度变化
+        if random.random() < 0.5:
+            contrast = random.uniform(0.7, 1.4)
+            mean = img_np.mean()
+            img_np = (img_np - mean) * contrast + mean
+
+        # 饱和度变化
+        if random.random() < 0.5:
+            saturation = random.uniform(0.5, 1.5)
+            gray = img_np.mean(axis=2, keepdims=True)
+            img_np = gray + (img_np - gray) * saturation
+
+        # 色偏（RGB 通道独立增益）
+        if random.random() < 0.3:
+            r_gain = random.uniform(0.85, 1.15)
+            g_gain = random.uniform(0.85, 1.15)
+            b_gain = random.uniform(0.85, 1.15)
+            img_np[:, :, 0] *= r_gain
+            img_np[:, :, 1] *= g_gain
+            img_np[:, :, 2] *= b_gain
+
+        return Image.fromarray(np.clip(img_np, 0, 255).astype(np.uint8))
+
+    def _random_poisson_noise(self, img_pil):
+        """
+        泊松噪声（模拟光子计数噪声，低光场景常见）
+        信号依赖型噪声：噪声强度与信号强度成正比
+        """
+        img_np = np.array(img_pil).astype(np.float32)
+        # 泊松噪声：对每个像素值进行泊松采样
+        # scale 控制噪声水平，越高噪声越强
+        scale = random.uniform(5.0, 20.0)
+        # 先放大到光子计数域，加泊松噪声，再缩回来
+        img_scaled = img_np * scale
+        noise = np.random.poisson(img_scaled) / scale - img_np
+        img_noisy = img_np + noise * random.uniform(0.5, 1.5)
+        return Image.fromarray(np.clip(img_noisy, 0, 255).astype(np.uint8))
 
     def _random_noise(self, img_pil):
         """随机高斯噪声"""
         img_np = np.array(img_pil).astype(np.float32)
-        noise_level = random.uniform(0, 15)  # 0-15 像素级噪声
+        noise_level = random.uniform(5, 25)  # 5-25 像素级噪声（增强）
         noise = np.random.normal(0, noise_level, img_np.shape)
         img_noisy = np.clip(img_np + noise, 0, 255).astype(np.uint8)
         return Image.fromarray(img_noisy)
 
     def _random_jpeg(self, img_pil):
         """真实 JPEG 压缩（使用 PIL 的 DCT 域量化）"""
-        quality = random.randint(30, 95)
+        quality = random.randint(10, 95)  # 下限降到 10（增强）
         buffer = BytesIO()
         img_pil.save(buffer, format='JPEG', quality=quality)
         buffer.seek(0)
@@ -110,32 +194,51 @@ class RealESRGANDegradation:
             # 二阶退化（Real-ESRGAN）
 
             # === 第一阶退化 ===
-            if random.random() < 0.8:
+            if random.random() < 0.9:
                 hr_pil = self._random_blur(hr_pil)
+
+            # Sinc 滤波（产生振铃 artifacts，模拟相机 AA 滤波）
+            if random.random() < 0.3:
+                hr_pil = self._random_sinc_blur(hr_pil)
+
+            # 运动模糊（真实世界常见）
+            if random.random() < 0.4:
+                hr_pil = self._random_motion_blur(hr_pil)
+
+            # 颜色退化（模拟光照和白平衡变化）
+            if random.random() < 0.5:
+                hr_pil = self._random_color_degradation(hr_pil)
 
             # 随机缩放（模拟不同相机传感器尺寸）
-            if random.random() < 0.3:
-                hr_pil = self._random_resize(hr_pil, min_scale=0.4, max_scale=0.9)
-
-            # 加噪声
             if random.random() < 0.5:
+                hr_pil = self._random_resize(hr_pil, min_scale=0.3, max_scale=0.9)
+
+            # 加噪声（高斯 + 泊松混合）
+            if random.random() < 0.7:
                 hr_pil = self._random_noise(hr_pil)
+            if random.random() < 0.3:
+                hr_pil = self._random_poisson_noise(hr_pil)
 
             # === 第二阶退化 ===
-            if random.random() < 0.5:
+            if random.random() < 0.6:
                 hr_pil = self._random_blur(hr_pil)
 
+            if random.random() < 0.3:
+                hr_pil = self._random_motion_blur(hr_pil)
+
             # JPEG 压缩（真实的 DCT 域量化）
-            if random.random() < 0.6:
+            if random.random() < 0.7:
                 hr_pil = self._random_jpeg(hr_pil)
 
             # 最终下采样
             w, h = hr_pil.size
             lr_pil = hr_pil.resize((w // self.scale, h // self.scale), Image.BICUBIC)
 
-            # 最终噪声（传感器噪声）
-            if random.random() < 0.3:
+            # 最终噪声（传感器噪声：高斯 + 泊松）
+            if random.random() < 0.5:
                 lr_pil = self._random_noise(lr_pil)
+            if random.random() < 0.2:
+                lr_pil = self._random_poisson_noise(lr_pil)
 
             return lr_pil
 
@@ -410,6 +513,67 @@ class FixedValidationDataset(Dataset):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 保持与原代码兼容的接口
 # ═══════════════════════════════════════════════════════════════════════════════
+
+class DegradedValidationDataset(Dataset):
+    """
+    退化验证数据集 — 对 HR 应用退化生成 LR
+
+    与 FixedValidationDataset 的区别：
+    - FixedValidationDataset：从 LR/HR 文件夹加载 clean 对
+    - DegradedValidationDataset：从 HR 文件夹加载，实时应用退化生成 LR
+
+    适用于 Phase 2/3 的退化训练验证，确保验证集分布与训练集一致。
+    """
+
+    def __init__(self, folder_path, scale=2, degradation='second_order'):
+        super().__init__()
+        self.scale = scale
+        self.degradation = RealESRGANDegradation(scale=scale, mode=degradation)
+
+        # 寻找 HR 文件夹
+        hr_folder = os.path.join(folder_path, 'HR')
+        if not os.path.exists(hr_folder):
+            hr_folder = folder_path
+
+        valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp')
+        self.image_files = [f for f in os.listdir(hr_folder)
+                            if f.lower().endswith(valid_extensions)]
+        self.image_files.sort()
+
+        if len(self.image_files) == 0:
+            raise ValueError(f"在 {hr_folder} 中没有找到图片文件！")
+
+        self.hr_folder = hr_folder
+
+        if VERBOSE:
+            print(f"退化验证集: {len(self.image_files)} 张, 退化: {degradation}")
+
+        self.to_tensor = transforms.ToTensor()
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        img_name = self.image_files[idx]
+        hr_path = os.path.join(self.hr_folder, img_name)
+
+        # 加载 HR
+        hr = Image.open(hr_path).convert('RGB')
+
+        # 应用退化生成 LR（与训练时一致的退化分布）
+        lr = self.degradation.degrade(hr)
+
+        # 确保 LR 尺寸正确（退化中的随机缩放可能改变尺寸）
+        w, h = hr.size
+        expected_lr_size = (w // self.scale, h // self.scale)
+        if lr.size != expected_lr_size:
+            lr = lr.resize(expected_lr_size, Image.BICUBIC)
+
+        lr_tensor = self.to_tensor(lr)
+        hr_tensor = self.to_tensor(hr)
+
+        return lr_tensor.clone(), hr_tensor.clone()
+
 
 class FolderDataset(FixedFolderDataset):
     """兼容原接口的别名"""
