@@ -1,0 +1,62 @@
+{
+  "train-file": [
+    "/root/autodl-tmp/DIV2K/DIV2K_train_set/x2/HR",
+    "/root/autodl-tmp/FLickr2K/x2/HR"
+  ],
+  "eval-file": [
+    "/root/autodl-tmp/DIV2K/DIV2K_eval_set",
+    "/root/autodl-tmp/Set14",
+    "/root/autodl-tmp/urban"
+  ],
+  "model": "full",
+  "arch": "official",
+  "window-size": 8,
+  "mlp-ratio": 2.0,
+  "upsampler": "pixelshuffle",
+  "use-ema": true,
+  "ema-decay": 0.999,
+  "save": "yes",
+  "save-seq": 10,
+  "early-stop": true,
+  "es-patience": 20,
+  "es-min-epochs": 80,
+  "es-min-delta": 0.0001,
+  "distributed": true,
+  "num-workers": 8,
+  "lr-schedule": "warmup_cosine",
+  "min-lr": 1e-07,
+
+  "_comment_loss": "PSNR优先+轻度降噪V2：比V1多一点点频域约束，更适合有纹理的图片",
+  "w-l1": 1.0,
+  "w-ssim": 0.4,
+  "w-lpips": 0.0,
+  "w-fft": 0.2,
+  "w-edge": 0.15,
+  "w-mscn": 0.0,
+
+  "val-w-psnr": 1.0,
+  "val-w-ssim": 0.0,
+  "val-w-lpips": 0.0,
+  "calc-niqe": false,
+  "val-w-niqe": 0.0,
+
+  "degradation": "first_order",
+  "val-interval": 5,
+  "val-warmup-epochs": 10,
+
+  "_comment": "Coursework V2: 纯PSNR导向，无LPIPS，适合课设展示指标",
+  "outputs-dir": "./checkpoints/coursework_psnr_denoise_v2/",
+  "scale": 2,
+  "embed-dim": 180,
+  "depths": [6, 6, 6, 6, 6, 6],
+  "num-heads": [6, 6, 6, 6, 6, 6],
+  "drop-path-rate": 0.1,
+  "pretrained": "./weights/swinir_full_x2.pth",
+  "patch-size": 192,
+  "batch-size": 8,
+  "grad-accum": 4,
+  "num-epochs": 200,
+  "lr": 0.0001,
+  "warmup-epochs": 5,
+  "T-max": 200
+}

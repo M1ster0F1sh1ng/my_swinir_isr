@@ -226,10 +226,49 @@ def reverse_augment_img(img, mode=0):
         return img.transpose(1, 0, 2)[::-1, ::-1, :]
 
 
-def preprocess_image(image_path, device):
-    """读取并预处理图像"""
+def apply_pre_filter(img_np, filter_type='bilateral', strength=10):
+    """
+    超分前预处理滤波 — 抑制轻度噪声，保留边缘
+    Args:
+        img_np: [H, W, C] numpy array, range [0, 1]
+        filter_type: 'none' | 'bilateral' | 'gaussian' | 'median'
+        strength: 滤波强度
+    Returns:
+        filtered_np: [H, W, C], range [0, 1]
+    """
+    if filter_type == 'none' or strength <= 0:
+        return img_np
+
+    img_uint8 = (img_np * 255.0).astype(np.uint8)
+
+    if filter_type == 'bilateral':
+        # 双边滤波：保边缘去噪，d=5 较小避免过度平滑
+        d = 5
+        sigma_color = max(5, strength)
+        sigma_space = max(5, strength)
+        filtered = cv2.bilateralFilter(img_uint8, d, sigma_color, sigma_space)
+    elif filter_type == 'gaussian':
+        ksize = 5
+        sigma = max(0.5, strength / 10.0)
+        filtered = cv2.GaussianBlur(img_uint8, (ksize, ksize), sigma)
+    elif filter_type == 'median':
+        ksize = max(3, min(strength // 5 * 2 + 1, 7))  # 3, 5, 7
+        filtered = cv2.medianBlur(img_uint8, ksize)
+    else:
+        return img_np
+
+    return filtered.astype(np.float32) / 255.0
+
+
+def preprocess_image(image_path, device, pre_filter='none', pre_strength=10):
+    """读取并预处理图像（可选超分前滤波）"""
     img = pil_image.open(image_path).convert('RGB')
     img = np.array(img).astype(np.float32) / 255.0
+
+    # 超分前滤波
+    if pre_filter != 'none':
+        img = apply_pre_filter(img, filter_type=pre_filter, strength=pre_strength)
+
     img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).to(device)
     return img
 
@@ -279,12 +318,15 @@ def inference_selfensemble(model, img_tensor, window_size=8):
     return output
 
 
-def process_image(model, image_path, output_path, device, window_size=8, use_selfensemble=False):
+def process_image(model, image_path, output_path, device, window_size=8,
+                      use_selfensemble=False, pre_filter='none', pre_strength=10):
     """处理单张图片"""
     print(f"[处理] {image_path}")
-    img_tensor = preprocess_image(image_path, device)
+    img_tensor = preprocess_image(image_path, device, pre_filter=pre_filter, pre_strength=pre_strength)
     _, _, h, w = img_tensor.shape
     print(f"  输入尺寸: {w}x{h}")
+    if pre_filter != 'none':
+        print(f"  预处理滤波: {pre_filter} (strength={pre_strength})")
 
     start = time.time()
     if use_selfensemble:
@@ -316,6 +358,11 @@ def main():
                         help='计算设备')
     parser.add_argument('--self-ensemble', action='store_true', help='启用 Self-Ensemble x8 (提升约 0.1~0.3 dB)')
     parser.add_argument('--window-size', type=int, default=8, help='SwinIR window size')
+    parser.add_argument('--pre-filter', type=str, default='none',
+                        choices=['none', 'bilateral', 'gaussian', 'median'],
+                        help='超分前预处理滤波类型 (默认 none)')
+    parser.add_argument('--pre-strength', type=int, default=10,
+                        help='预处理滤波强度 (bilateral: 5~20, gaussian: 5~30, median: 5~35)')
 
     args = parser.parse_args()
 
@@ -353,7 +400,8 @@ def main():
         else:
             output_file = output_path
         process_image(model, input_path, output_file, device,
-                      window_size=args.window_size, use_selfensemble=args.self_ensemble)
+                      window_size=args.window_size, use_selfensemble=args.self_ensemble,
+                      pre_filter=args.pre_filter, pre_strength=args.pre_strength)
 
     elif input_path.is_dir():
         # 文件夹批量处理
@@ -372,7 +420,8 @@ def main():
             out_file = output_path / f"{img_file.stem}_sr_x{cfg['scale']}.png"
             try:
                 process_image(model, img_file, out_file, device,
-                              window_size=args.window_size, use_selfensemble=args.self_ensemble)
+                              window_size=args.window_size, use_selfensemble=args.self_ensemble,
+                              pre_filter=args.pre_filter, pre_strength=args.pre_strength)
             except Exception as e:
                 print(f"[错误] 处理 {img_file.name} 失败: {e}")
 

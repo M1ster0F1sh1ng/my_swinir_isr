@@ -139,6 +139,45 @@ class RealESRGANDegradation:
 
             return lr_pil
 
+        elif self.mode == 'mild':
+            # 轻度退化：高PSNR + 轻度降噪训练专用
+            # 退化强度介于 first_order 和 second_order 之间，但概率和幅度都降低
+
+            if random.random() < 0.5:
+                # 轻度模糊
+                radius = random.uniform(0.1, 0.8)
+                hr_pil = hr_pil.filter(ImageFilter.GaussianBlur(radius=radius))
+
+            if random.random() < 0.4:
+                # 轻度噪声 0-8
+                img_np = np.array(hr_pil).astype(np.float32)
+                noise_level = random.uniform(0, 8)
+                noise = np.random.normal(0, noise_level, img_np.shape)
+                img_noisy = np.clip(img_np + noise, 0, 255).astype(np.uint8)
+                hr_pil = Image.fromarray(img_noisy)
+
+            if random.random() < 0.3:
+                # 轻度 JPEG 70-95
+                quality = random.randint(70, 95)
+                buffer = BytesIO()
+                hr_pil.save(buffer, format='JPEG', quality=quality)
+                buffer.seek(0)
+                hr_pil = Image.open(buffer)
+
+            # 最终下采样
+            w, h = hr_pil.size
+            lr_pil = hr_pil.resize((w // self.scale, h // self.scale), Image.BICUBIC)
+
+            # 最终轻度噪声（概率低）
+            if random.random() < 0.2:
+                img_np = np.array(lr_pil).astype(np.float32)
+                noise_level = random.uniform(0, 5)
+                noise = np.random.normal(0, noise_level, img_np.shape)
+                img_noisy = np.clip(img_np + noise, 0, 255).astype(np.uint8)
+                lr_pil = Image.fromarray(img_noisy)
+
+            return lr_pil
+
         # 默认
         w, h = hr_pil.size
         return hr_pil.resize((w // self.scale, h // self.scale), Image.BICUBIC)
