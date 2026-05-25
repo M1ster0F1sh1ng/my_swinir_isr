@@ -34,7 +34,7 @@
   "val-w-lpips": 0.0,
   "calc-niqe": false,
   "val-w-niqe": 0.0,
-  "degradation": "clean",
+  "degradation": "second_order",
   "val-interval": 2,
   "val-warmup-epochs": 50,
   "stage1-epochs": 400,

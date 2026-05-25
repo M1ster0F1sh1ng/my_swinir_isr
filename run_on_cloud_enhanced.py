@@ -1123,8 +1123,72 @@ def safe_collate_fn(batch):
     return lr_batch, hr_batch
 
 
+def prepare_eval_lr(eval_paths, scale=2, degradation='second_order'):
+    """
+    检查并预生成验证集 LR 图像（缺失时自动补全）。
+    只在主进程执行；DDP 环境下会 barrier 同步等待，防止其他 rank 提前开始读取不完整的文件。
+    """
+    if not is_main_process():
+        if is_distributed:
+            dist.barrier()
+        return
+
+    degradator = cloud_dataset.RealESRGANDegradation(scale=scale, mode=degradation)
+    valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp')
+    generated_any = False
+
+    for folder_path in eval_paths:
+        # 寻找 HR 目录（优先 HR/ 子目录，否则用根目录）
+        hr_folder = os.path.join(folder_path, 'HR')
+        if not os.path.isdir(hr_folder):
+            hr_folder = folder_path
+
+        if not os.path.isdir(hr_folder):
+            continue
+
+        hr_files = [f for f in os.listdir(hr_folder)
+                    if f.lower().endswith(valid_extensions)]
+        hr_files.sort()
+        if len(hr_files) == 0:
+            continue
+
+        # 准备 LR 目录
+        lr_folder = os.path.join(folder_path, 'LR', f'X{scale}')
+        os.makedirs(lr_folder, exist_ok=True)
+
+        # 检查是否一一对应
+        missing = []
+        for f in hr_files:
+            lr_path = os.path.join(lr_folder, f)
+            if not os.path.exists(lr_path):
+                missing.append(f)
+
+        if len(missing) == 0:
+            continue
+
+        generated_any = True
+        print(f'[验证集预生成] {folder_path} 缺失 {len(missing)}/{len(hr_files)} 张，开始生成...')
+        for f in tqdm(missing, desc=f'退化 {os.path.basename(folder_path)}'):
+            hr_path = os.path.join(hr_folder, f)
+            lr_path = os.path.join(lr_folder, f)
+            hr = Image.open(hr_path).convert('RGB')
+            lr = degradator.degrade(hr)
+            lr.save(lr_path)
+
+    if generated_any:
+        print('[验证集预生成] 全部完成')
+    else:
+        print('[验证集预生成] 所有验证集 LR 已存在且完整，跳过')
+
+    if is_distributed:
+        dist.barrier()
+
+
 def data_loader_list_return():
     """创建数据加载器 — 使用 FixedFolderDataset 和 FixedValidationDataset"""
+    # 启动前自动检查并补全验证集 LR（如缺失或不完整）
+    prepare_eval_lr(args.eval_file, scale=args.scale, degradation=args.degradation)
+
     if not is_main_process():
         cloud_dataset.set_verbose(False)
 
@@ -1173,18 +1237,13 @@ def data_loader_list_return():
         print('加载 eval_set')
 
     # 使用验证数据集
-    # 当 degradation != 'clean' 时，使用 DegradedValidationDataset
-    # 确保验证集分布与训练集一致（HR 经过退化生成 LR）
+    # 验证始终使用 FixedValidationDataset，读取预生成的 LR/X2/
+    # 避免全图实时二阶退化导致的极端缓慢（训练仍用 second_order）
     eval_loaders = []
     for index in range(len(eval_dataset)):
-        if args.degradation != 'clean':
-            eval_ds = cloud_dataset.DegradedValidationDataset(
-                eval_dataset[index], scale=args.scale, degradation=args.degradation
-            )
-        else:
-            eval_ds = cloud_dataset.FixedValidationDataset(
-                eval_dataset[index], scale=args.scale
-            )
+        eval_ds = cloud_dataset.FixedValidationDataset(
+            eval_dataset[index], scale=args.scale
+        )
         eval_loader = DataLoader(
             dataset=eval_ds,
             batch_size=1,
