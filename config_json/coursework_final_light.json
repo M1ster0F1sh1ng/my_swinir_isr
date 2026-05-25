@@ -5,7 +5,7 @@
     "/root/autodl-tmp/bsd300/train"
   ],
   "eval-file": [
-    "/root/autodl-tmp/DIV2K/DIV2K_eval_set",
+    "/root/autodl-tmp/DIV2K/DIV2K_eval_set/x2",
     "/root/autodl-tmp/Set14",
     "/root/autodl-tmp/urban",
     "/root/autodl-tmp/bsd300/test"
