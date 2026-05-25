@@ -1188,9 +1188,11 @@ def data_loader_list_return():
         eval_loader = DataLoader(
             dataset=eval_ds,
             batch_size=1,
-            num_workers=2,
+            num_workers=args.num_workers,
             pin_memory=True,
-            persistent_workers=False,
+            persistent_workers=True if args.num_workers > 0 else False,
+            prefetch_factor=4 if args.num_workers > 0 else None,
+            multiprocessing_context='spawn' if args.num_workers > 0 else None,
             collate_fn=safe_collate_fn,
         )
         eval_loaders.append(eval_loader)
