@@ -18,8 +18,7 @@ def pre_degrade_eval_set(folder_path, scale=2, degradation='second_order'):
     """
     hr_folder = os.path.join(folder_path, 'HR')
     if not os.path.isdir(hr_folder):
-        print(f"[跳过] {folder_path} 下没有 HR/ 子目录")
-        return
+        hr_folder = folder_path  # 兼容图片直接放在根目录的结构
 
     lr_folder = os.path.join(folder_path, 'LR', f'X{scale}')
     os.makedirs(lr_folder, exist_ok=True)
