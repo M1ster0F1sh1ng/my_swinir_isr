@@ -21,7 +21,7 @@
   "save-seq": 10,
   "early-stop": false,
   "distributed": true,
-  "num-workers": 75,
+  "num-workers": 22,
   "lr-schedule": "warmup_cosine",
   "min-lr": 1e-06,
   "w-l1": 1.0,
