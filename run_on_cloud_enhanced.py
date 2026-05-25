@@ -118,17 +118,24 @@ class ImageMetricsEvaluator:
     3. RGB PSNR（兼容旧逻辑）
     """
 
-    def __init__(self, device='cuda', calc_niqe=False, border=0, test_y_channel=False):
+    def __init__(self, device='cuda', calc_niqe=False, border=0, test_y_channel=False,
+                 calc_psnr=True, calc_ssim=True, calc_lpips=True):
         self.device = device
         self.calc_niqe = calc_niqe
         self.border = border
         self.test_y_channel = test_y_channel
+        self.calc_psnr = calc_psnr
+        self.calc_ssim = calc_ssim
+        self.calc_lpips = calc_lpips
         # LPIPS
-        try:
-            import lpips
-            self.lpips_model = lpips.LPIPS(net='alex').to(device)
-            self.has_lpips = True
-        except ImportError:
+        if calc_lpips:
+            try:
+                import lpips
+                self.lpips_model = lpips.LPIPS(net='alex').to(device)
+                self.has_lpips = True
+            except ImportError:
+                self.has_lpips = False
+        else:
             self.has_lpips = False
 
     def evaluate(self, pred, target):
@@ -142,31 +149,37 @@ class ImageMetricsEvaluator:
         metrics = {}
 
         # === RGB PSNR / SSIM ===
-        metrics['psnr_rgb'] = calc_psnr(
-            pred[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else pred,
-            target[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else target
-        ).item()
-        metrics['ssim_rgb'] = calc_ssim(pred, target).item()
+        if self.calc_psnr:
+            metrics['psnr_rgb'] = calc_psnr(
+                pred[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else pred,
+                target[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else target
+            ).item()
+        if self.calc_ssim:
+            metrics['ssim_rgb'] = calc_ssim(pred, target).item()
 
         # === YCbCr Y 通道 PSNR（学术标准）===
         if self.test_y_channel:
             pred_y = rgb_to_ycbcr_y(pred)
             target_y = rgb_to_ycbcr_y(target)
-            metrics['psnr'] = calc_psnr(
-                pred_y[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else pred_y,
-                target_y[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else target_y
-            ).item()
-            metrics['ssim'] = calc_ssim(pred_y, target_y).item()
+            if self.calc_psnr:
+                metrics['psnr'] = calc_psnr(
+                    pred_y[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else pred_y,
+                    target_y[:, :, self.border:-self.border, self.border:-self.border] if self.border > 0 else target_y
+                ).item()
+            if self.calc_ssim:
+                metrics['ssim'] = calc_ssim(pred_y, target_y).item()
         else:
-            metrics['psnr'] = metrics['psnr_rgb']
-            metrics['ssim'] = metrics['ssim_rgb']
+            if self.calc_psnr:
+                metrics['psnr'] = metrics.get('psnr_rgb', 0.0)
+            if self.calc_ssim:
+                metrics['ssim'] = metrics.get('ssim_rgb', 0.0)
 
-        if self.has_lpips:
+        if self.calc_lpips and self.has_lpips:
             pred_lpips = pred * 2 - 1
             target_lpips = target * 2 - 1
             with torch.no_grad():
                 metrics['lpips'] = self.lpips_model(pred_lpips, target_lpips).mean().item()
-        else:
+        elif self.calc_lpips:
             metrics['lpips'] = 0.0
         return metrics
 
@@ -346,8 +359,11 @@ class MultiMetricScore:
 class EnhancedMetricsEvaluator(ImageMetricsEvaluator):
     """在原有 ImageMetricsEvaluator 基础上增加 NIQE 支持"""
 
-    def __init__(self, device='cuda', calc_niqe=False, border=0, test_y_channel=False):
-        super().__init__(device=device, calc_niqe=calc_niqe, border=border, test_y_channel=test_y_channel)
+    def __init__(self, device='cuda', calc_niqe=False, border=0, test_y_channel=False,
+                 calc_psnr=True, calc_ssim=True, calc_lpips=True):
+        super().__init__(device=device, calc_niqe=calc_niqe, border=border,
+                         test_y_channel=test_y_channel,
+                         calc_psnr=calc_psnr, calc_ssim=calc_ssim, calc_lpips=calc_lpips)
         self.calc_niqe = calc_niqe
         self.niqe_model = None
 
@@ -1384,14 +1400,22 @@ def train_one_epoch(model, train_loader, criterion, optimizer,
 
 @torch.no_grad()
 def validate(model, eval_loaders, device, calc_niqe=False, border=0, test_y_channel=False):
-    """验证模型 — 支持 NIQE 的多指标评估"""
+    """验证模型 — 支持 NIQE 的多指标评估，权重为 0 时跳过计算以加速"""
     model.eval()
     all_psnrs = []
     all_ssims = []
     all_lpips = []
     all_niqes = []
 
-    evaluator = EnhancedMetricsEvaluator(device=device, calc_niqe=calc_niqe, border=border, test_y_channel=test_y_channel)
+    # 根据 JSON/命令行权重决定是否计算对应指标
+    calc_psnr = getattr(args, 'val_w_psnr', 1.0) > 0
+    calc_ssim = getattr(args, 'val_w_ssim', 0.0) > 0
+    calc_lpips = getattr(args, 'val_w_lpips', 0.0) > 0
+
+    evaluator = EnhancedMetricsEvaluator(
+        device=device, calc_niqe=calc_niqe, border=border, test_y_channel=test_y_channel,
+        calc_psnr=calc_psnr, calc_ssim=calc_ssim, calc_lpips=calc_lpips
+    )
 
     for idx, eval_loader in enumerate(eval_loaders):
         epoch_psnr = AverageMeter()
@@ -1422,18 +1446,23 @@ def validate(model, eval_loaders, device, calc_niqe=False, border=0, test_y_chan
             labels = labels[:, :, :min_h, :min_w]
 
             metrics = evaluator.evaluate(preds, labels)
-            epoch_psnr.update(metrics['psnr'], inputs.size(0))
-            epoch_ssim.update(metrics['ssim'], inputs.size(0))
-            epoch_lpips_loss.update(metrics['lpips'], inputs.size(0))
+            if calc_psnr:
+                epoch_psnr.update(metrics['psnr'], inputs.size(0))
+            if calc_ssim:
+                epoch_ssim.update(metrics['ssim'], inputs.size(0))
+            if calc_lpips:
+                epoch_lpips_loss.update(metrics['lpips'], inputs.size(0))
             if calc_niqe:
                 epoch_niqe.update(metrics.get('niqe', 0.0), inputs.size(0))
 
             if is_main_process():
-                postfix = {
-                    'PSNR': f'{metrics["psnr"]:.2f}',
-                    'SSIM': f'{metrics["ssim"]:.4f}',
-                    'LPIPS': f'{metrics["lpips"]:.4f}',
-                }
+                postfix = {}
+                if calc_psnr:
+                    postfix['PSNR'] = f'{metrics["psnr"]:.2f}'
+                if calc_ssim:
+                    postfix['SSIM'] = f'{metrics["ssim"]:.4f}'
+                if calc_lpips:
+                    postfix['LPIPS'] = f'{metrics["lpips"]:.4f}'
                 if calc_niqe:
                     postfix['NIQE'] = f'{metrics.get("niqe", 0):.2f}'
                 pbar_eval.set_postfix(postfix)
@@ -1441,9 +1470,12 @@ def validate(model, eval_loaders, device, calc_niqe=False, border=0, test_y_chan
         if is_main_process():
             pbar_eval.close()
 
-        all_psnrs.append(epoch_psnr.avg)
-        all_ssims.append(epoch_ssim.avg)
-        all_lpips.append(epoch_lpips_loss.avg)
+        if calc_psnr:
+            all_psnrs.append(epoch_psnr.avg)
+        if calc_ssim:
+            all_ssims.append(epoch_ssim.avg)
+        if calc_lpips:
+            all_lpips.append(epoch_lpips_loss.avg)
         if calc_niqe:
             all_niqes.append(epoch_niqe.avg)
 
