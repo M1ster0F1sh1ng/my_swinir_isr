@@ -340,7 +340,7 @@ class FixedFolderDataset(Dataset):
     """
 
     def __init__(self, folder_path, scale=2, patch_size=64, pre_crop=True,
-                 degradation='second_order', augment=True):
+                 degradation='second_order', augment=True, mixed_clean_ratio=0.3):
         super().__init__()
         self.folder_path = folder_path
         self.scale = scale
@@ -366,13 +366,24 @@ class FixedFolderDataset(Dataset):
         if len(self.image_files) == 0:
             raise ValueError(f"在 {search_dir} 中没有找到图片文件！")
 
-        if VERBOSE:
-            print(f"加载 {len(self.image_files)} 张图片从 {folder_path}")
-            if search_dir != folder_path:
-                print(f"  (从 HR/ 子目录加载)")
-            print(f"  退化: {degradation}, 增强: {augment}")
+        self.degradation_mode = degradation
+        if degradation == 'mixed':
+            self.clean_degradator = RealESRGANDegradation(scale=scale, mode='clean')
+            self.degrade_degradator = RealESRGANDegradation(scale=scale, mode='second_order')
+            self.mixed_clean_ratio = mixed_clean_ratio
+            if VERBOSE:
+                print(f"加载 {len(self.image_files)} 张图片从 {folder_path}")
+                if search_dir != folder_path:
+                    print(f"  (从 HR/ 子目录加载)")
+                print(f"  退化: mixed (clean_ratio={mixed_clean_ratio}), 增强: {augment}")
+        else:
+            self.degradation = RealESRGANDegradation(scale=scale, mode=degradation)
+            if VERBOSE:
+                print(f"加载 {len(self.image_files)} 张图片从 {folder_path}")
+                if search_dir != folder_path:
+                    print(f"  (从 HR/ 子目录加载)")
+                print(f"  退化: {degradation}, 增强: {augment}")
 
-        self.degradation = RealESRGANDegradation(scale=scale, mode=degradation)
         self.to_tensor = transforms.ToTensor()
 
     def _get_hr_path(self, img_name):
@@ -412,7 +423,13 @@ class FixedFolderDataset(Dataset):
                 hr_patch = hr_image.resize((self.patch_size, self.patch_size), Image.BICUBIC)
 
             # 应用退化模型生成 LR
-            lr_patch = self.degradation.degrade(hr_patch)
+            if self.degradation_mode == 'mixed':
+                if random.random() < self.mixed_clean_ratio:
+                    lr_patch = self.clean_degradator.degrade(hr_patch)
+                else:
+                    lr_patch = self.degrade_degradator.degrade(hr_patch)
+            else:
+                lr_patch = self.degradation.degrade(hr_patch)
 
             # 关键修复：退化中的随机缩放（_random_resize）会改变图像尺寸，
             # 导致同一个 batch 里 LR tensor 尺寸不一致，无法 stack。
@@ -439,7 +456,11 @@ class FixedFolderDataset(Dataset):
         else:
             # 验证模式
             w, h = hr_image.size
-            lr_image = self.degradation.degrade(hr_image)
+            if self.degradation_mode == 'mixed':
+                # 验证时默认用 second_order，保证退化难度
+                lr_image = self.degrade_degradator.degrade(hr_image)
+            else:
+                lr_image = self.degradation.degrade(hr_image)
             return self.to_tensor(lr_image).clone(), self.to_tensor(hr_image).clone()
 
 

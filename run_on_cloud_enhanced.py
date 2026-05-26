@@ -1208,7 +1208,11 @@ def prepare_eval_lr(eval_paths, scale=2, degradation='second_order'):
 def data_loader_list_return():
     """创建数据加载器 — 使用 FixedFolderDataset 和 FixedValidationDataset"""
     # 启动前自动检查并补全验证集 LR（如缺失或不完整）
-    prepare_eval_lr(args.eval_file, scale=args.scale, degradation=args.degradation)
+    # mixed 训练时，验证集统一用 second_order 生成（保证退化难度可监控）
+    eval_degradation = args.degradation
+    if eval_degradation == 'mixed':
+        eval_degradation = 'second_order'
+    prepare_eval_lr(args.eval_file, scale=args.scale, degradation=eval_degradation)
 
     if not is_main_process():
         cloud_dataset.set_verbose(False)
@@ -1226,7 +1230,8 @@ def data_loader_list_return():
             patch_size=args.patch_size,
             pre_crop=True,
             degradation=args.degradation,
-            augment=not args.no_augment
+            augment=not args.no_augment,
+            mixed_clean_ratio=args.mixed_clean_ratio
         )
 
     train_file_set = ConcatDataset(train_dataset)
@@ -1278,8 +1283,11 @@ def data_loader_list_return():
         eval_loaders.append(eval_loader)
 
     if is_main_process():
+        degr_info = args.degradation
+        if args.degradation == 'mixed':
+            degr_info = f"mixed (clean={args.mixed_clean_ratio})"
         print(f'训练集: {len(train_file_set)} samples, '
-              f'退化: {args.degradation}, 增强: {not args.no_augment}')
+              f'退化: {degr_info}, 增强: {not args.no_augment}')
 
     return train_loader, eval_loaders, train_sampler
 
@@ -1583,8 +1591,10 @@ def main():
 
     # 新增：退化模型参数
     parser.add_argument('--degradation', type=str, default='second_order',
-                        choices=['clean', 'first_order', 'second_order'],
-                        help='退化模式')
+                        choices=['clean', 'first_order', 'second_order', 'mixed'],
+                        help='退化模式 (mixed: 混合 clean 与 second_order)')
+    parser.add_argument('--mixed-clean-ratio', type=float, default=0.3,
+                        help='mixed 模式下 clean 样本的比例 (0~1)，默认 0.3')
     parser.add_argument('--no-augment', action='store_true',
                         help='禁用数据增强')
 
