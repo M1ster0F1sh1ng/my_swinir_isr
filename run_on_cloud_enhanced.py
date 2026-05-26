@@ -1189,6 +1189,11 @@ def prepare_eval_lr(eval_paths, scale=2, degradation='second_order'):
             lr_path = os.path.join(lr_folder, f)
             hr = Image.open(hr_path).convert('RGB')
             lr = degradator.degrade(hr)
+            # 关键修复：退化中的 random_resize 可能改变尺寸，必须强制 resize 回标准尺寸
+            w, h = hr.size
+            expected_size = (w // scale, h // scale)
+            if lr.size != expected_size:
+                lr = lr.resize(expected_size, Image.BICUBIC)
             lr.save(lr_path)
 
     if generated_any:

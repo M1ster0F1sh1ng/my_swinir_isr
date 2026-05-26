@@ -44,6 +44,11 @@ def pre_degrade_eval_set(folder_path, scale=2, degradation='second_order'):
 
         hr = Image.open(hr_path).convert('RGB')
         lr = degradator.degrade(hr)
+        # 关键修复：退化中的 random_resize 可能改变尺寸，必须强制 resize 回标准尺寸
+        w, h = hr.size
+        expected_size = (w // scale, h // scale)
+        if lr.size != expected_size:
+            lr = lr.resize(expected_size, Image.BICUBIC)
         lr.save(lr_path)
 
     print(f"完成: LR 保存至 {lr_folder}")
